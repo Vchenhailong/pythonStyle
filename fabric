@@ -1,0 +1,137 @@
+#!/bin/sh
+#coding:utf-8
+
+
+from fabric.api import *
+from fabric.context_managers import *  
+from fabric.contrib.console import confirm
+from fabric.colors import *
+from FabTest.MapRuleParserClass import MapRuleParser
+import time
+
+
+# TomCatPath
+# orgPath = '/data/apache-tomcat-8.0.26'
+# workPath = '/apache-tomcat-8.0.26/webapps/'
+
+# resourcePath
+resourcePath = '/data/oper/Resources/'
+
+# 部署规则表地址
+rulesPath = './FabTest/Mapping.test.ini'
+
+# 解析文件
+pathMap = MapRuleParser(rulesPath,resourcePath)
+
+# 服务器账号
+env.user = 'oper'
+env.password = '123654'
+env.hosts = []
+
+
+def test():
+    print green(pathMap.getTargetsOf('foundation'))
+
+
+def depFoundation():
+    upload_allHost(pathMap.getTargetsOf('foundation'))
+
+
+def depAll():
+    execute(depFoundation)
+
+
+def upload_allHost(targets):
+    if(targets and len(targets)>=0):
+        for target in targets:
+            upload_singleHost(target)
+        return True
+    else:
+        return False
+
+def upload_singleHost(target):
+    try:
+        warname     = target[0]
+        hostIp         = target[1] 
+        hostPort     = target[2]
+        hostPath     = target[3]
+    except Exception,e:
+        print e
+        print red('解析目标地址失败！')
+        print red(target)
+
+    print yellow('\n'+warname+' is Begin!------->')
+    with settings(host_string = hostIp ):
+        print green('* -->%s:%s/%s' % (hostIp,hostPort,hostPath))        
+        try:
+            
+            # 停服
+            print yellow('============STEP1:停服============')
+            # 检查服务的端口是否不存在
+            pidN = run("lsof -i:%s | awk {'print $2'}" % hostPort)
+            # 对应服务端口进程号为空，判断是未启动，直接跳过第一步
+            if pidN.strip() is '':
+                try:
+                    print blue('STEP1:原计划关闭的服务端口没启动，直接PASS到下一步去')
+                    pass
+                except Exception,e:
+                    print blue(e)
+                    print blue('STEP1:表紧张~~~~当下tomcat应该是未启动捏~~~~~~~~~')
+            # 对应服务端口进程号有，判断已启动，则尝试停服
+            elif pidN is not None:
+                print blue('STEP1:当前tomcat进程为：%s' % pidN)
+                print yellow('STEP1:tomcat启动了，我先关闭哟')
+                time.sleep(15)
+                print yellow('************************************')
+                run('cd %s && cd ../bin && sh shutdown.sh' % hostPath)
+                print green('STEP1:完成关闭了，检查下')
+                print yellow('************************************')
+                time.sleep(5)
+                pidF = run("lsof -i:%s | awk {'print $2'}" % hostPort)
+                print blue('STEP1:进程为空吧?看-->' + pidF.strip() + ' <--那就对了')
+                print green('STEP1:终于把tomcat成功关闭了捏')
+            else:
+                print red('tomcat可能出现异常了')
+                print red('需要kill tomcat进程')
+            
+            
+            # 删除容器内已解压的文件
+            print yellow('============STEP2:删除容器内的文件============')
+            run('rm -rf %s*' % hostPath)
+            print blue('STEP2:删除操作完成')
+
+
+            # 上传新war包到目的路径的容器
+            print yellow('============STEP3:上传新war包到目的路径的容器===========')
+# 这行暂时不要         run('mkdir -p %s' % hostPath)
+            warnameVer = warname+'-'+time.strftime('%Y%m%d%H%m%S',time.localtime(time.time()))
+            put(resourcePath+warname,hostPath+warname);
+            print blue('STEP3:完成了文件上传')
+
+
+            # 根据warnameVer备份war包
+            print yellow('============STEP4:将标识了上传日期的war包备份===========')
+            run('cd %s && cp -r %s %s && mv %s /data/oper/theLastestWar/' % (hostPath, hostPath+warname, warnameVer, warnameVer))
+            print blue('STEP4:备份完成，并标识上了日期哟')
+
+
+            # 启动应用
+            print yellow('============STEP5:启动应用============')
+            print yellow('************************************')
+            run('set -m;cd %s && cd ../bin && sh startup.sh' % hostPath)
+            print yellow('************************************')
+            # 查看服务端口是否启动
+            time.sleep(20)
+            pidT = run("lsof -i:%s | awk {'print $2'}" % hostPort)
+
+            if pidT is not None:
+                print green('STEP5:启动应用了，端口在这里：%s' % pidT)
+                print blue('#########    端口号就在上面    ##########')
+            else:
+                print red('tomcat可能出现异常了')
+                print red('请紧急处理')
+                
+        except Exception,e:
+            print e
+            print red('%s 上传文件失败'%warname)
+    print green(warname + ' ' + 'is Done!--------<'    )
