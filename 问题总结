@@ -8,7 +8,7 @@
 * 解决方法：time.sleep
 
 *B.返回为空时的处理手段*
-
+`
 	pidN = run("lsof -i:%s | awk {'print $2'}" % hostPort)	
 	# 对应服务端口进程号为空，判断是未启动，直接跳过第一步
 	if pidN.strip() is '':
@@ -18,7 +18,7 @@
     except Exception,e:
         print blue(e)
         print blue('表紧张~~~~当下tomcat应该是未启动捏~~~~~~~~~')  
-  
+`  
 ***
 ### 启动时
 *A.执行启动命令，从标准输出看到tomcat确实启动了，但是为什么包没有解压，服务也没有*
