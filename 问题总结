@@ -1,0 +1,26 @@
+***
+### 关闭tomcat时
+#### 
+
+*A.为什么调用shutdown时，报错连接拒绝*
+
+* 结论——很可能是因为tomcat没启动或没完全启动；而这个时候调用shutdown就会出现此类报错
+* 解决方法：time.sleep
+
+*B.返回为空时的处理手段*
+
+	pidN = run("lsof -i:%s | awk {'print $2'}" % hostPort)	
+	# 对应服务端口进程号为空，判断是未启动，直接跳过第一步
+	if pidN.strip() is '':
+    try:
+        print green('服务端口没启动的，直接PASS到下一步去')
+        pass
+    except Exception,e:
+        print blue(e)
+        print blue('表紧张~~~~当下tomcat应该是未启动捏~~~~~~~~~')  
+  
+***
+### 启动时
+*A.执行启动命令，从标准输出看到tomcat确实启动了，但是为什么包没有解压，服务也没有*
+解决方法：加上一句：   set -m;
+如   run('set -m;cd %s && cd ../bin && sh startup.sh' % hostPath)
