@@ -11,8 +11,8 @@ import time
 
 
 # TomCatPath
-# orgPath = '/data/apache-tomcat-8.0.26'
-# workPath = '/apache-tomcat-8.0.26/webapps/'
+# orgPath = '/data/tomcat'
+# workPath = '/tomcat/webapps/'
 
 # resourcePath
 resourcePath = '/data/oper/Resources/'
@@ -24,21 +24,21 @@ rulesPath = './FabTest/Mapping.test.ini'
 pathMap = MapRuleParser(rulesPath,resourcePath)
 
 # 服务器账号
-env.user = 'oper'
-env.password = '123654'
+env.user = 'god'
+env.password = '123456789'
 env.hosts = []
 
 
 def test():
-    print green(pathMap.getTargetsOf('foundation'))
+    print green(pathMap.getTargetsOf('testApp'))
 
 
-def depFoundation():
-    upload_allHost(pathMap.getTargetsOf('foundation'))
+def deployApp():
+    upload_allHost(pathMap.getTargetsOf('testApp'))
 
 
-def depAll():
-    execute(depFoundation)
+def depolAll():
+    execute(deployApp)
 
 
 def upload_allHost(targets):
@@ -103,7 +103,6 @@ def upload_singleHost(target):
 
             # 上传新war包到目的路径的容器
             print yellow('============STEP3:上传新war包到目的路径的容器===========')
-# 这行暂时不要         run('mkdir -p %s' % hostPath)
             warnameVer = warname+'-'+time.strftime('%Y%m%d%H%m%S',time.localtime(time.time()))
             put(resourcePath+warname,hostPath+warname);
             print blue('STEP3:完成了文件上传')
